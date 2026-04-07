@@ -22,8 +22,18 @@ enough_time_since_last_run_passed() {
 	local last_saved_timestamp="$(get_tmux_option "$last_auto_save_option" "0")"
 	local interval_minutes="$(get_interval)"
 	local interval_seconds="$((interval_minutes * 60))"
-	local next_run="$((last_saved_timestamp + $interval_seconds))"
-	[ "$(current_timestamp)" -ge "$next_run" ]
+	local now="$(current_timestamp)"
+	local elapsed="$((now - last_saved_timestamp))"
+	# If the time gap is much larger than the save interval, the system
+	# likely slept. Reset the timer instead of triggering an immediate save
+	# to avoid a burst of process lookups on wake.
+	local max_gap="$((interval_seconds * 3))"
+	if [ "$elapsed" -gt "$max_gap" ] && [ "$last_saved_timestamp" -gt 0 ]; then
+		set_last_save_timestamp
+		return 1
+	fi
+	local next_run="$((last_saved_timestamp + interval_seconds))"
+	[ "$now" -ge "$next_run" ]
 }
 
 fetch_and_run_tmux_resurrect_save_script() {
