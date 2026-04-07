@@ -63,8 +63,13 @@ acquire_lock() {
 }
 
 main() {
-	if supported_tmux_version_ok && auto_save_not_disabled && enough_time_since_last_run_passed && acquire_lock; then
-		fetch_and_run_tmux_resurrect_save_script
+	if supported_tmux_version_ok && auto_save_not_disabled && enough_time_since_last_run_passed; then
+		# Claim the timeslot immediately so concurrent/back-to-back
+		# invocations see the updated timestamp and skip.
+		set_last_save_timestamp
+		if acquire_lock; then
+			fetch_and_run_tmux_resurrect_save_script
+		fi
 	fi
 }
 main
