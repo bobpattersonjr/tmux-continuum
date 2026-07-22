@@ -55,6 +55,12 @@ start_auto_restore_in_background() {
 	"$CURRENT_DIR/scripts/continuum_restore.sh" &
 }
 
+start_save_daemon() {
+	local server_pid
+	server_pid="$(tmux display-message -p '#{pid}')"
+	"$CURRENT_DIR/scripts/continuum_save_daemon.sh" "$server_pid" >/dev/null 2>&1 &
+}
+
 update_tmux_option() {
 	local option="$1"
 	local option_value="$(get_tmux_option "$option")"
@@ -73,7 +79,12 @@ main() {
 		if ! another_tmux_server_running; then
 			# give user a chance to restore previously saved session
 			delay_saving_environment_on_first_plugin_load
-			add_resurrect_save_interpolation
+			# Saves are driven by a background daemon rather than a
+			# `#(continuum_save.sh)` interpolation in status-right. This
+			# decouples saving from the status line, so tmux-powerline can no
+			# longer clobber the save hook and a restore no longer fires stray
+			# saves via the status-refresh storm.
+			start_save_daemon
 		fi
 
 		if just_started_tmux_server; then
