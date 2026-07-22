@@ -64,9 +64,13 @@ acquire_lock() {
 
 main() {
 	if supported_tmux_version_ok && auto_save_not_disabled && enough_time_since_last_run_passed; then
-		# Claim the timeslot immediately so concurrent/back-to-back
-		# invocations see the updated timestamp and skip.
-		set_last_save_timestamp
+		# The lock is the sole concurrency guard: whichever invocation wins it
+		# performs the save and advances the timestamp (inside
+		# fetch_and_run_tmux_resurrect_save_script). Invocations that lose the
+		# lock do nothing and must NOT touch the timestamp. Previously the slot
+		# was claimed *before* acquiring the lock, so a lost lock (common during
+		# the status-refresh storm a restore triggers) burned the whole interval
+		# and the save was silently skipped until the next cycle.
 		if acquire_lock; then
 			fetch_and_run_tmux_resurrect_save_script
 		fi
