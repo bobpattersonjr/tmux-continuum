@@ -19,12 +19,12 @@ handle_tmux_automatic_start() {
 }
 
 another_tmux_server_running() {
-	if just_started_tmux_server; then
-		another_tmux_server_running_on_startup
-	else
-		# script loaded after tmux server start can have multiple clients attached
-		[ "$(number_tmux_processes_except_current_server)" -gt "$(number_current_server_client_processes)" ]
-	fi
+	# True only if a *different* tmux server is running -- not merely extra
+	# clients attached to ours. Counting real server processes (ppid 1) works
+	# identically at startup and later, so no startup/non-startup split is
+	# needed. This is what previously skipped autosave when many clients
+	# reattached at once during startup.
+	[ "$(number_other_tmux_servers)" -gt 0 ]
 }
 
 delay_saving_environment_on_first_plugin_load() {
