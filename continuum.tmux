@@ -58,7 +58,13 @@ start_auto_restore_in_background() {
 start_save_daemon() {
 	local server_pid
 	server_pid="$(tmux display-message -p '#{pid}')"
-	"$CURRENT_DIR/scripts/continuum_save_daemon.sh" "$server_pid" >/dev/null 2>&1 &
+	# Launch as a background child of the tmux *server* (run-shell -b), not as a
+	# job of this plugin-load run-shell. A bare `&` here makes the daemon a
+	# child of the loader process, which tmux reaps once plugin loading
+	# finishes (the short-lived restore survives that; a long-lived daemon does
+	# not). A server child persists until the server exits -- exactly the
+	# daemon's intended lifetime.
+	tmux run-shell -b "'$CURRENT_DIR/scripts/continuum_save_daemon.sh' $server_pid >/dev/null 2>&1"
 }
 
 update_tmux_option() {
